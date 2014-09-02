@@ -1,4 +1,4 @@
-taxcalc
-=======
+Simple Australian Tax Calculator
+================================
 
-taxcalc
+My first app. Testing out my JavaScript skills
