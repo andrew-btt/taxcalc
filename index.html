@@ -1,105 +1,104 @@
 <html>
 <head>
 <script type='text/javascript'>
-//Define Input
-var income = 250000;
-var superAnnuationPercentage = 9.25;
-var superAnnuationTaxRate = 15;
+//constructor to create the initial object. Accepts object and creates new taxCalculation object
+function taxCalculation(configuration){
+      this.superAnnuationPercentage = configuration.superAnnuationPercentage;
+      this.superAnnuationTaxRate    = configuration.superAnnuationTaxRate;
+};
+
+//creating a new object "tax" with taxCalculation constructor
+
+var tax = new taxCalculation({
+    superAnnuationPercentage: 9.25,
+    superAnnuationTaxRate:  15
+});
+
+
+
+//Defines HECS/HELP repayment brackets
+var hecs = [
+{from:0,     percentage:0},
+{from:53346, percentage:4},
+{from:59422, percentage:4.5},
+{from:65498, percentage:5.0},
+{from:68940, percentage:5.5},
+{from:74106, percentage:6.0},
+{from:80258, percentage:6.5},
+{from:84482, percentage:7.0},
+{from:92971, percentage:7.5}, 
+{from:99070, percentage:8.0},
+];
 
 //Defines the tax brackets
 var taxBracket = [
-    {from: 0, to: 18200, percentage: 0, amount: 0},
-    {from: 18201, to: 37000, percentage: 19, over: 18200, amount: 0},
-    {from: 37001, to: 80000, percentage: 32.5, over: 37000, amount: 3752},
-    {from: 80001, to: 180000, percentage: 37, over: 80000, amount: 17547},
-    {from: 180001, to: Infinity, percentage: 45, over: 180000, amount: 54547}
+    {from: 0, percentage: 0, baseAmount: 0},
+    {from: 18201, percentage: 19, over: 18200, baseAmount: 0},
+    {from: 37001, percentage: 32.5, over: 37000, baseAmount: 3752},
+    {from: 80001, percentage: 37, over: 80000, baseAmount: 17547},
+    {from: 180001, percentage: 45, over: 180000, baseAmount: 54547}
 ];
 
-//Defines tax brackets for non residents 
-var nonResidentTaxBracket =[
-	{from:0, to:80000, percentag:32.5},
-	{from:80000, to:180000, percentage:37},
-	{from:180000, to:Infinity, percentage:45}]
-];
+//Calculate the super annuation component of grossIncome
+taxCalculation.prototype.grossSuperAnnuation = function(income){
+    return income * this.superAnnuationPercentage / 100;
 
-//Defines levy brackets for Medicare
-var medicareLevy = [
-	{from:0, to: 88000, percentage: 0},
-	{from:88001, to: 102000, percentage:1},
-	{from:102001, to: 136000, percentage:1.25},
-	{from:136001, to: Infinity, percentage:1.5},
-];
-
-//Defines studentFinancialSupplement repayment brackets
-var sfss = [
-	{from:0, to:53345, percentage:0},
-	{from:44912, to:55143, percentage:2},
-	{from:55144, to:78273, percentage:3},
-	{from:78274, to:Infinity, percentage:4}
-];
-
-//Defines Low Income Tax offset (LITO)
-var lito = [
-{from:0, to:37000, amount:445, percentage:0},
-{from:37001, to:37000, amount:445, percentage:1.5},
-{from:66667, to:Infinity, amount:0, percentage:0},
-];
-
-//Defines HECS/HELP repayment brackets
-var hecsHelp = [
-{from:0, 	 to:53345, percentage:4},
-{from:53344, to:59421, percentage:4},
-{from:59422, to:65497, percentage:4.5},
-{from:65498, to:68939, percentage:5.0},
-{from:68940, to:74105, percentage:5.5},
-{from:74106, to:80527, percentage:6.0},
-{from:80258, to:84481, percentage:6.5},
-{from:84482, to:92970, percentage:7.0},
-{from:99070, to:99069, percentage:7.5},
-{from:99070, to:Infinity, percentage:8.0},
-];
-
-//Calculates superannuation based on a percentage provided in global variable
-//iniated by variable gross income
-var superannuationCalc = function (int) {
-	var percent = superAnnuationPercentage/100;
-	return  int * percent;
 };
 
-//define gross income
-var grossIncome = income - superannuationCalc(income);
 
-//working out total tax
-var totalTax = taxCalc(grossIncome) + superannuationTaxCalc(superannuationCalc(income),superAnnuationTaxRate);
+
+//Calculates tax on super annuation component
+taxCalculation.prototype.superAnnuationTax = function(grossSuper){
+  return grossSuper * this.superAnnuationTaxRate / 100;
+};
+
+
+//Calculate gross income
+taxCalculation.prototype.grossIncome = function(grossIncome){
+    return grossIncome - this.grossSuperAnnuation(grossIncome);
+
+};
+
+
+//Calculates HECS bracket based on gross income
+taxCalculation.prototype.hecsCalculation = function (hecsIncome){
+        for (var x = 0; x < hecs.length; x++){
+            if(hecsIncome >= hecs[x].from){
+            var percentage = hecs[x].percentage/100;
+            }
+        };        
+        return hecsIncome * percentage;
+};
 
 //Loops through taxBracket object and finds the tax bracket for the post deduction gross income amount
-function taxCalc(grossSuperIncome){
+taxCalculation.prototype.taxBracketCalculation = function (grossSuperIncome){
     for(var x = 0; x < taxBracket.length; x++){
-        if(grossSuperIncome <= taxBracket[x].to){
+        if(grossSuperIncome >= taxBracket[x].from){
             var amountOver = grossSuperIncome - taxBracket[x].over;
             var percent = taxBracket[x].percentage / 100;
-            return taxBracket[x].amount + (amountOver * percent);
-
+            return taxBracket[x].baseAmount + (amountOver * percent);
         }
 
     };
 };
 
-//calculates super tax amount by usuing superTaxRate and superAnnuation Variables. pass from total tax calculation
-function superannuationTaxCalc(superAmount,superTaxRate){
-	var percent = superTaxRate / 100;
-	return superAmount * percent;
+//Calculate all of the factors in tax calculation
+taxCalculation.prototype.totalTax = function (income){
+  var taxResult = {
+    income: income
+  };
+  taxResult.superAnnuation = this.grossSuperAnnuation(income);
+  taxResult.grossIncome = this.grossIncome(income);
+  console.log(taxResult.grossIncome)
+  taxResult.taxbase = this.taxBracketCalculation(taxResult.grossIncome);
+  taxResult.taxSuper = this.superAnnuationTax(taxResult.superAnnuation);
+  taxResult.hecs = this.hecsCalculation(tax.grossIncome);
+  taxResult.endResult = taxResult.hecs +
+                       taxResult.taxSuper +
+                       taxResult.taxBase;
+  return taxResult;
 };
 
-//calculates Hecs based
-function hecsHelpCalc(hecsIncome){
-		for (var x =0; x < hecsHelp.length; x++){
-			if(hecsIncome <= hecsHelp[x].to){
-			var percentage = hecsHelp[x].percentage / 100;
-			return hecsIncome * percentage;
-			}
-		};
-};
 
 </script>
 </head>
@@ -108,4 +107,3 @@ function hecsHelpCalc(hecsIncome){
 
 </body>
 </html>
-
